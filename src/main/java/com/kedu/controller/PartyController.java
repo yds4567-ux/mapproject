@@ -61,9 +61,12 @@ public class PartyController {
 		int memberCount = partyDAO.countMembers(partyId);
 		model.addAttribute("memberCount", memberCount);
 
-		List<String> memberIds = partyDAO.findMemberIds(partyId);
-		model.addAttribute("memberIds", memberIds);
+		List<String> memberNames = partyDAO.findMemberNames(partyId);
+		model.addAttribute("memberNames", memberNames);
 
+		MemberDTO host = memberDAO.selectMember(party.getHostId());
+		model.addAttribute("hostName", host.getUsername());
+	
 		model.addAttribute("party", party);
 		return "party/detail";
 	}
@@ -74,15 +77,28 @@ public class PartyController {
 	}
 
 	@RequestMapping("/apply")
-	public String apply(int partyId, Model model) {
+	public String apply(int partyId, HttpSession session, Model model) {
 		PartyDTO party = partyDAO.findById(partyId);
 
+		String loginId = (String) session.getAttribute("loginId");
+		
+		if (loginId == null) {
+			return "redirect:/member/login";
+		}
+		
+		PartyDTO dto = partyDAO.findById(partyId);
+		
+		if (dto == null) {
+			return "redirect:/party/list";
+		}
+		
 		if (party == null) {
 			return "redirect:/party/list";
 		}
-
-		model.addAttribute("party", party);
+		
+		model.addAttribute("party", dto);
 		return "party/apply";
+
 	}
 
 	@RequestMapping(value = "/createSubmit", method = RequestMethod.POST)

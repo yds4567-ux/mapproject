@@ -17,28 +17,26 @@ public class PartyDAO {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 
-	public List<PartyDTO> findAll(int offset) {
-	    String sql =
-	        "SELECT * FROM ( " +
-	        "  SELECT t.*, ROWNUM rn FROM ( " +
-	        "    SELECT p.PARTY_ID, p.STORE_ID, p.TITLE, p.MEET_DATE, s.STORE_NAME, " +
-	        "           REGEXP_SUBSTR(s.ADDRESS, '^[^ ]+시 [^ ]+구') AS address " +
-	        "    FROM PARTY p " +
-	        "    LEFT JOIN GOOD_STORE s ON p.STORE_ID = s.STORE_ID " +
-	        "    ORDER BY p.PARTY_ID DESC " +
-	        "  ) t WHERE ROWNUM <= ? " +
-	        ") WHERE rn > ?";
+	@Autowired
+	private NotificationDAO notificationDAO;
 
-	    return jdbcTemplate.query(sql, (rs, rowNum) -> {
-	        PartyDTO party = new PartyDTO();
-	        party.setPartyId(rs.getInt("PARTY_ID"));
-	        party.setStoreId(rs.getInt("STORE_ID"));
-	        party.setTitle(rs.getString("TITLE"));
-	        party.setMeetDate(rs.getTimestamp("MEET_DATE"));
-	        party.setStoreName(rs.getString("STORE_NAME"));
-	        party.setAddress(rs.getString("ADDRESS"));
-	        return party;
-	    }, offset + 9, offset);
+	public List<PartyDTO> findAll(int offset) {
+		String sql = "SELECT * FROM ( " + "  SELECT t.*, ROWNUM rn FROM ( "
+				+ "    SELECT p.PARTY_ID, p.STORE_ID, p.TITLE, p.MEET_DATE, s.STORE_NAME, "
+				+ "           REGEXP_SUBSTR(s.ADDRESS, '^[^ ]+시 [^ ]+구') AS address " + "    FROM PARTY p "
+				+ "    LEFT JOIN GOOD_STORE s ON p.STORE_ID = s.STORE_ID " + "    ORDER BY p.PARTY_ID DESC "
+				+ "  ) t WHERE ROWNUM <= ? " + ") WHERE rn > ?";
+
+		return jdbcTemplate.query(sql, (rs, rowNum) -> {
+			PartyDTO party = new PartyDTO();
+			party.setPartyId(rs.getInt("PARTY_ID"));
+			party.setStoreId(rs.getInt("STORE_ID"));
+			party.setTitle(rs.getString("TITLE"));
+			party.setMeetDate(rs.getTimestamp("MEET_DATE"));
+			party.setStoreName(rs.getString("STORE_NAME"));
+			party.setAddress(rs.getString("ADDRESS"));
+			return party;
+		}, offset + 9, offset);
 	}
 
 	public PartyDTO findById(int partyId) {
@@ -170,12 +168,23 @@ public class PartyDAO {
 		if ("FCFS".equals(dto.getJoinType())) {
 			insertApplication(partyId, applicantId, answer, "APPROVED");
 			insertMember(partyId, applicantId);
+			
+			notificationDAO.insert(
+				dto.getHostId(), 
+				"PARTY_JOIN",
+				"PARTY", 
+				partyId, 
+				dto.getTitle() + " 모임에 새로운 멤버가 참여했습니다.");
+			
 		} else if ("APPROVAL".equals(dto.getJoinType())) {
 			insertApplication(partyId, applicantId, answer, "PENDING");
+
+			notificationDAO.insert(dto.getHostId(), "PARTY_APPLICATION", "PARTY", partyId,
+					dto.getTitle() + " 모임에 새로운 참여 신청이 있습니다.");
 		} else {
 			throw new IllegalArgumentException("참여 방식이 올바르지 않습니다.");
 		}
-		
+
 	}
 
 	public List<PartyApplicationDTO> findPendingApplications(int partyId) {
@@ -261,6 +270,13 @@ public class PartyDAO {
 			throw new IllegalArgumentException("이미 처리한 신청입니다.");
 		}
 		insertMember(partyId, padto.getApplicantId());
+		
+		notificationDAO.insert(
+		padto.getApplicantId(),
+		"PARTY_APPROVED",
+		"PARTY",
+		partyId,
+		dto.getTitle() + " 모임 참여 신청이 승인되었습니다.");
 	}
 
 	@Transactional
@@ -283,5 +299,19 @@ public class PartyDAO {
 		if (count != 1) {
 			throw new IllegalArgumentException("이미 처리한 신청입니다.");
 		}
+		
+		notificationDAO.insert(
+				padto.getApplicantId(), 
+				"PARTY_REJECTED",
+				"PARTY", 
+				partyId, 
+				dto.getTitle() + " 모임 참여 신청이 거절되었습니다.");
+	}
+
+	public List<String> findMemberNames(int partyId) {
+		String sql = "select m.USERNAME " + "from PARTY_MEMBER pm " + "join MEMBER m on pm.MEMBER_ID = m.MEMBER_ID "
+				+ "where pm.PARTY_ID = ? " + "order by pm.JOIN_DATE, pm.PARTY_MEMBER_ID";
+
+		return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getString("USERNAME"), partyId);
 	}
 }

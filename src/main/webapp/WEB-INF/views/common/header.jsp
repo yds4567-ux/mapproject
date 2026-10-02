@@ -87,6 +87,7 @@
   <div class="sh-right">
     <c:choose>
       <c:when test="${not empty sessionScope.loginId}">
+        <a class="sh-btn" href="/notification/list">알림</a>
         <a class="sh-btn" href="/member/logout">로그아웃</a>
         <a class="sh-avatar" href="/member/mypage" title="마이페이지"><i class="fa-solid fa-circle-user"></i></a>
       </c:when>

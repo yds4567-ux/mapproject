@@ -162,7 +162,7 @@
 				<fmt:formatDate value="${party.meetDate}"
 					pattern="yyyy.MM.dd(E) HH:mm" />
 			</p>
-			<p>모임장: ${party.hostId}</p>
+			<p>모임장: ${hostName}</p>
 			<p>모임 장소: ${party.storeName}</p>
 			<p>위치: ${party.address}</p>
 			<p>참여 방식: ${party.joinType == 'FCFS' ? '선착순' : '승인제'}</p>
@@ -176,11 +176,11 @@
 
 		<section class="party-members">
 			<h2>참여 확정 멤버</h2>
-			<C:forEach var="memberId" items="${memberIds}">
-				<span class="member">${memberId}</span>
+			<C:forEach var="memberNames" items="${memberNames}">
+				<span class="member">${memberNames}</span>
 			</C:forEach>
 
-			<C:if test="${empty memberIds}">
+			<C:if test="${empty memberNames}">
 				<p>아직 참여 확정 멤버가 없습니다.</p>
 			</C:if>
 		</section>
